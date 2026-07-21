@@ -15,7 +15,8 @@ import (
 	"criticalsys.net/dbminer/schema"
 )
 
-const Version = "0.9.0"
+// version is set at build time via -ldflags "-X main.version=x.y.z"
+var version = "dev"
 
 func main() {
 	// Input flags
@@ -23,6 +24,7 @@ func main() {
 
 	// Output flags
 	outputDir := flag.String("output", "./docs", "Output directory for markdown files")
+	groupBy := flag.String("group-by", "auto", "Table grouping in markdown: auto, prefix, schema, none")
 	exportFormat := flag.String("export-format", "", "Export format: json, ndjson, tsv (outputs to -o file instead of markdown)")
 	exportFile := flag.String("o", "", "Output file for -export-format (required with -export-format)")
 	tsvSplit := flag.Bool("tsv-split", false, "Split TSV into separate files (tables.tsv, columns.tsv, etc)")
@@ -40,7 +42,15 @@ func main() {
 	sampleSize := flag.Int("sample", 100, "MongoDB: documents to sample per collection (default 100)")
 	maxDepth := flag.Int("depth", 2, "MongoDB: nested object expansion depth (default 2)")
 
+	// Info flags
+	showVersion := flag.Bool("version", false, "Print version and exit")
+
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("dbminer %s\n", version)
+		return
+	}
 
 	// Validate flag combinations
 	if err := validateFlags(*genSQLFlag, *rawFile, *exportFormat, *exportFile, *tsvSplit, *outputDir); err != nil {
@@ -87,7 +97,8 @@ func main() {
 	}
 
 	// Mode 3: Generate markdown documentation (default)
-	if err := markdown.Generate(s, *outputDir); err != nil {
+	opts := markdown.Options{GroupBy: *groupBy}
+	if err := markdown.Generate(s, *outputDir, opts); err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating documentation: %v\n", err)
 		os.Exit(1)
 	}
@@ -96,7 +107,7 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Printf("dbminer v%s - Database Schema Documentation Generator\n", Version)
+	fmt.Printf("dbminer v%s - Database Schema Documentation Generator\n", version)
 	fmt.Println()
 	fmt.Println("WORKFLOW:")
 	fmt.Println("  Step 1: Generate SQL script and send to DBA")

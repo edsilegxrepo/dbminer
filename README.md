@@ -2,7 +2,7 @@
 
 **Multi-Database Schema Documentation Generator**
 
-Version 0.9.0 | [Architecture](ARCHITECTURE.md) | [Testing](TESTING.md) | [Changelog](CHANGELOG.md)
+Version 0.9.1 | [Architecture](ARCHITECTURE.md) | [Testing](TESTING.md) | [Changelog](CHANGELOG.md)
 
 ---
 
@@ -211,15 +211,31 @@ dbminer/
 
 ## Command Line Arguments
 
+### General Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `-version` | bool | `false` | Print version and exit |
+
 ### Input/Output Flags
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `-raw` | string | - | Path to JSON file from SQL collector |
 | `-output` | string | `./docs` | Output directory for Markdown files |
+| `-group-by` | string | `auto` | Table grouping in markdown: `auto`, `prefix`, `schema`, `none` |
 | `-export-format` | string | - | Export format: `json`, `ndjson`, `tsv` |
 | `-o` | string | - | Output file for `-gensql` or `-export-format` |
 | `-tsv-split` | bool | `false` | Split TSV into separate files per entity |
+
+### Table Grouping Options (`-group-by`)
+
+| Option | Behavior |
+|--------|----------|
+| `auto` | Auto-detect delimiter from table names (`.`, `_`, or `-`) and group by first two segments |
+| `prefix` | Always group by underscore-separated prefix (e.g., `dpa_web` from `dpa_web_user`) |
+| `schema` | Group by database schema name (`t.Schema` field) |
+| `none` | No grouping - single alphabetical list under "Tables" |
 
 ### SQL Generation Flags
 

@@ -22,9 +22,17 @@ var (
 	safeFilenameRegex = regexp.MustCompile(`[^a-zA-Z0-9_\-.]`)
 )
 
+// Options configures markdown generation behavior.
+type Options struct {
+	GroupBy string // auto, prefix, schema, none
+}
+
 // Generate creates markdown documentation for the schema. Produces README.md
 // with overview and domain-level ERD, plus individual table docs in tables/ subdirectory.
-func Generate(s *schema.Schema, outputDir string) error {
+func Generate(s *schema.Schema, outputDir string, opts Options) error {
+	if opts.GroupBy == "" {
+		opts.GroupBy = "auto"
+	}
 	tableMap := make(map[string]*schema.Table)
 	fieldMap := make(map[string]*schema.Field)
 
@@ -40,7 +48,7 @@ func Generate(s *schema.Schema, outputDir string) error {
 		return fmt.Errorf("creating output directory: %w", err)
 	}
 
-	if err := generateReadme(s, outputDir, tableMap, fieldMap); err != nil {
+	if err := generateReadme(s, outputDir, tableMap, fieldMap, opts); err != nil {
 		return fmt.Errorf("generating README: %w", err)
 	}
 
@@ -59,26 +67,74 @@ func Generate(s *schema.Schema, outputDir string) error {
 	return nil
 }
 
-// getTablePrefix extracts domain prefix from table name (e.g., "dpa_web" from "dpa_web_user").
-func getTablePrefix(name string) string {
-	parts := strings.Split(name, "_")
+// detectDelimiter analyzes table names to find the most common delimiter.
+// Returns the delimiter if >50% of tables contain it, empty string otherwise.
+func detectDelimiter(tables []schema.Table) string {
+	if len(tables) == 0 {
+		return ""
+	}
+	counts := map[string]int{".": 0, "_": 0, "-": 0}
+	for _, t := range tables {
+		for delim := range counts {
+			if strings.Contains(t.Name, delim) {
+				counts[delim]++
+			}
+		}
+	}
+	threshold := len(tables) / 2
+	// Check in order of precedence: dot (schema), underscore, hyphen
+	for _, delim := range []string{".", "_", "-"} {
+		if counts[delim] > threshold {
+			return delim
+		}
+	}
+	return ""
+}
+
+// getTablePrefix extracts domain prefix from table name based on delimiter.
+func getTablePrefix(name, delimiter string) string {
+	if delimiter == "" {
+		return "other"
+	}
+	parts := strings.Split(name, delimiter)
 	if len(parts) >= 2 {
-		return parts[0] + "_" + parts[1]
+		return parts[0] + delimiter + parts[1]
 	}
 	return "other"
 }
 
+// getTableGroup returns the grouping key for a table based on Options.GroupBy.
+func getTableGroup(t *schema.Table, delimiter string, groupBy string) string {
+	switch groupBy {
+	case "none":
+		return "Tables"
+	case "schema":
+		if t.Schema != "" {
+			return t.Schema
+		}
+		return "default"
+	case "prefix":
+		return getTablePrefix(t.Name, "_")
+	case "auto":
+		fallthrough
+	default:
+		return getTablePrefix(t.Name, delimiter)
+	}
+}
+
 // generateMermaidERD creates a domain-level flowchart showing table groups and cross-domain relationships.
-func generateMermaidERD(s *schema.Schema, tableMap map[string]*schema.Table, fieldMap map[string]*schema.Field) string {
+func generateMermaidERD(s *schema.Schema, tableMap map[string]*schema.Table, fieldMap map[string]*schema.Field, opts Options) string {
 	var sb strings.Builder
 
+	delimiter := detectDelimiter(s.Tables)
 	groupRelCounts := make(map[string]map[string]int)
 	tableGroups := make(map[string][]string)
 	connectedGroups := make(map[string]bool)
 
-	for _, t := range s.Tables {
-		prefix := getTablePrefix(t.Name)
-		tableGroups[prefix] = append(tableGroups[prefix], t.Name)
+	for i := range s.Tables {
+		t := &s.Tables[i]
+		group := getTableGroup(t, delimiter, opts.GroupBy)
+		tableGroups[group] = append(tableGroups[group], t.Name)
 	}
 
 	for _, rel := range s.Relationships {
@@ -88,41 +144,41 @@ func generateMermaidERD(s *schema.Schema, tableMap map[string]*schema.Table, fie
 			continue
 		}
 
-		srcPrefix := getTablePrefix(srcTable.Name)
-		tgtPrefix := getTablePrefix(tgtTable.Name)
+		srcGroup := getTableGroup(srcTable, delimiter, opts.GroupBy)
+		tgtGroup := getTableGroup(tgtTable, delimiter, opts.GroupBy)
 
-		if srcPrefix != tgtPrefix {
-			connectedGroups[srcPrefix] = true
-			connectedGroups[tgtPrefix] = true
+		if srcGroup != tgtGroup {
+			connectedGroups[srcGroup] = true
+			connectedGroups[tgtGroup] = true
 
-			if groupRelCounts[srcPrefix] == nil {
-				groupRelCounts[srcPrefix] = make(map[string]int)
+			if groupRelCounts[srcGroup] == nil {
+				groupRelCounts[srcGroup] = make(map[string]int)
 			}
-			groupRelCounts[srcPrefix][tgtPrefix]++
+			groupRelCounts[srcGroup][tgtGroup]++
 		}
 	}
 
 	sb.WriteString("```mermaid\nflowchart LR\n")
 
-	for prefix := range connectedGroups {
-		count := len(tableGroups[prefix])
-		fmt.Fprintf(&sb, "    %s[%s<br/>%d tables]\n", sanitizeMermaidID(prefix), escapeMermaidLabel(prefix), count)
+	for group := range connectedGroups {
+		count := len(tableGroups[group])
+		fmt.Fprintf(&sb, "    %s[%s<br/>%d tables]\n", sanitizeMermaidID(group), escapeMermaidLabel(group), count)
 	}
 
 	sb.WriteString("\n")
 
 	seen := make(map[string]bool)
-	for srcPrefix, targets := range groupRelCounts {
-		for tgtPrefix, count := range targets {
-			key := srcPrefix + "|" + tgtPrefix
-			reverseKey := tgtPrefix + "|" + srcPrefix
+	for srcGroup, targets := range groupRelCounts {
+		for tgtGroup, count := range targets {
+			key := srcGroup + "|" + tgtGroup
+			reverseKey := tgtGroup + "|" + srcGroup
 			if seen[key] || seen[reverseKey] {
 				continue
 			}
 			seen[key] = true
 
 			fmt.Fprintf(&sb, "    %s -->|%d| %s\n",
-				sanitizeMermaidID(srcPrefix), count, sanitizeMermaidID(tgtPrefix))
+				sanitizeMermaidID(srcGroup), count, sanitizeMermaidID(tgtGroup))
 		}
 	}
 
@@ -236,7 +292,7 @@ func sanitizeFilename(name string) string {
 	return safe
 }
 
-func generateReadme(s *schema.Schema, outputDir string, tableMap map[string]*schema.Table, fieldMap map[string]*schema.Field) error {
+func generateReadme(s *schema.Schema, outputDir string, tableMap map[string]*schema.Table, fieldMap map[string]*schema.Field, opts Options) error {
 	var sb strings.Builder
 
 	fmt.Fprintf(&sb, "# %s Database Schema\n\n", escapeMarkdownCell(s.Name))
@@ -254,7 +310,7 @@ func generateReadme(s *schema.Schema, outputDir string, tableMap map[string]*sch
 
 	sb.WriteString("---\n\n")
 	sb.WriteString("## Schema Overview (by Domain)\n\n")
-	sb.WriteString(generateMermaidERD(s, tableMap, fieldMap))
+	sb.WriteString(generateMermaidERD(s, tableMap, fieldMap, opts))
 
 	sb.WriteString("\n---\n\n")
 	sb.WriteString("## Table of Contents\n\n")
@@ -265,10 +321,12 @@ func generateReadme(s *schema.Schema, outputDir string, tableMap map[string]*sch
 		return tables[i].Name < tables[j].Name
 	})
 
+	delimiter := detectDelimiter(s.Tables)
 	groups := make(map[string][]schema.Table)
-	for _, t := range tables {
-		prefix := getTablePrefix(t.Name)
-		groups[prefix] = append(groups[prefix], t)
+	for i := range tables {
+		t := &tables[i]
+		group := getTableGroup(t, delimiter, opts.GroupBy)
+		groups[group] = append(groups[group], *t)
 	}
 
 	groupKeys := make([]string, 0, len(groups))
@@ -277,9 +335,9 @@ func generateReadme(s *schema.Schema, outputDir string, tableMap map[string]*sch
 	}
 	sort.Strings(groupKeys)
 
-	for _, prefix := range groupKeys {
-		fmt.Fprintf(&sb, "### %s\n\n", escapeMarkdownCell(prefix))
-		for _, t := range groups[prefix] {
+	for _, group := range groupKeys {
+		fmt.Fprintf(&sb, "### %s\n\n", escapeMarkdownCell(group))
+		for _, t := range groups[group] {
 			icon := "📋"
 			if t.IsView {
 				icon = "👁️"

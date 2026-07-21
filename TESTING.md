@@ -1,6 +1,6 @@
 # dbminer Test Suite Documentation
 
-**Version:** 0.9.0  
+**Version:** 0.9.1  
 **Last Updated:** 2026-07-20  
 **Coverage:** 85.8%
 
@@ -293,6 +293,10 @@ arch-design/DB/goanywhere_schema_raw.json   # 210 tables, 1974 columns, 154 FKs
 | Edge Cases | `TestGenerate_InvalidOutputDir` | Bad path | Error returned |
 | Unicode | `TestGenerate_UnicodeContent` | CJK, emoji | Content preserved |
 | Scale | `TestGenerate_LargeSchema` | 50 tables | All files created |
+| Delimiter | `TestDetectDelimiter` | 6 delimiter scenarios | Correct delimiter or empty |
+| Grouping | `TestGetTableGroup` | 5 groupBy scenarios | Correct group key |
+| GroupBy | `TestGenerate_GroupByNone` | none option | Single "Tables" group |
+| GroupBy | `TestGenerate_GroupBySchema` | schema option | Schema-based groups |
 
 ### markdown/goanywhere_test.go
 

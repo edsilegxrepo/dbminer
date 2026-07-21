@@ -5,6 +5,24 @@ All notable changes to dbminer will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-07-20
+
+### Added
+
+- `-group-by` flag for flexible table grouping in markdown output:
+  - `auto` (default): Auto-detect delimiter from table names
+  - `prefix`: Group by underscore-separated prefix
+  - `schema`: Group by database schema name
+  - `none`: No grouping, single alphabetical list
+- `-version` flag to print version and exit
+- Auto-detection of table naming convention (`.`, `_`, `-` delimiters)
+
+### Changed
+
+- Version now configurable at build time via `-ldflags "-X main.version=x.y.z"`
+
+---
+
 ## [0.9.0] - 2026-07-20
 
 ### Added

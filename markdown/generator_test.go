@@ -79,7 +79,7 @@ func TestGenerate_BasicStructure(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	err := Generate(s, dir)
+	err := Generate(s, dir, Options{})
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestGenerate_README_Header(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -135,7 +135,7 @@ func TestGenerate_README_TableOfContents(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -157,7 +157,7 @@ func TestGenerate_README_MermaidERD(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -174,7 +174,7 @@ func TestGenerate_README_RelationshipsTable(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -192,7 +192,7 @@ func TestGenerate_README_TriggersSection(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -212,7 +212,7 @@ func TestGenerate_README_StoredProceduresSection(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -232,7 +232,7 @@ func TestGenerate_TableDoc_Header(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -256,7 +256,7 @@ func TestGenerate_TableDoc_ColumnsTable(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -290,7 +290,7 @@ func TestGenerate_TableDoc_Indexes(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -307,7 +307,7 @@ func TestGenerate_TableDoc_Triggers(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -324,7 +324,7 @@ func TestGenerate_TableDoc_OutboundRelationships(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "orders.md"))
 	doc := string(content)
@@ -347,7 +347,7 @@ func TestGenerate_TableDoc_InboundRelationships(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -364,7 +364,7 @@ func TestGenerate_TableDoc_MermaidERD(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	// orders has relationships, should have ERD
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "orders.md"))
@@ -382,7 +382,7 @@ func TestGenerate_TableDoc_BackLink(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -409,7 +409,7 @@ func TestGenerate_ViewDoc(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "active_users.md"))
 	doc := string(content)
@@ -429,7 +429,7 @@ func TestGenerate_README_ViewIcon(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -546,7 +546,7 @@ func TestGenerate_EmptySchema(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	err := Generate(s, dir)
+	err := Generate(s, dir, Options{})
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -574,7 +574,7 @@ func TestGenerate_GeneratedColumns(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "products.md"))
 	doc := string(content)
@@ -603,7 +603,7 @@ func TestGenerate_DefaultValues(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -632,7 +632,7 @@ func TestGenerate_NullableIndicator(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -665,7 +665,7 @@ func TestGenerate_MultipleIndexColumns(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -693,7 +693,7 @@ func TestGenerate_StoredProcParameters(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir)
+	Generate(s, dir, Options{})
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -709,9 +709,169 @@ func TestGenerate_StoredProcParameters(t *testing.T) {
 func TestGenerate_InvalidOutputDir(t *testing.T) {
 	s := &schema.Schema{Name: "test"}
 
-	err := Generate(s, "/nonexistent/deep/path/that/cannot/be/created\x00invalid")
+	err := Generate(s, "/nonexistent/deep/path/that/cannot/be/created\x00invalid", Options{})
 	if err == nil {
 		t.Error("expected error for invalid output directory")
+	}
+}
+
+func TestDetectDelimiter(t *testing.T) {
+	tests := []struct {
+		name     string
+		tables   []schema.Table
+		expected string
+	}{
+		{
+			name:     "underscore majority",
+			tables:   []schema.Table{{Name: "dpa_users"}, {Name: "dpa_orders"}, {Name: "other"}},
+			expected: "_",
+		},
+		{
+			name:     "dot majority",
+			tables:   []schema.Table{{Name: "sales.orders"}, {Name: "sales.items"}, {Name: "other"}},
+			expected: ".",
+		},
+		{
+			name:     "hyphen majority",
+			tables:   []schema.Table{{Name: "user-accounts"}, {Name: "user-roles"}, {Name: "other"}},
+			expected: "-",
+		},
+		{
+			name:     "no clear majority",
+			tables:   []schema.Table{{Name: "users"}, {Name: "orders"}, {Name: "items"}},
+			expected: "",
+		},
+		{
+			name:     "empty tables",
+			tables:   []schema.Table{},
+			expected: "",
+		},
+		{
+			name:     "dot takes precedence over underscore",
+			tables:   []schema.Table{{Name: "sales.user_orders"}, {Name: "sales.user_items"}, {Name: "other"}},
+			expected: ".",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := detectDelimiter(tt.tables)
+			if got != tt.expected {
+				t.Errorf("detectDelimiter() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetTableGroup(t *testing.T) {
+	tests := []struct {
+		name      string
+		table     *schema.Table
+		delimiter string
+		groupBy   string
+		expected  string
+	}{
+		{
+			name:      "auto with underscore",
+			table:     &schema.Table{Name: "dpa_web_user", Schema: "mydb"},
+			delimiter: "_",
+			groupBy:   "auto",
+			expected:  "dpa_web",
+		},
+		{
+			name:      "prefix mode",
+			table:     &schema.Table{Name: "dpa_web_user", Schema: "mydb"},
+			delimiter: ".",
+			groupBy:   "prefix",
+			expected:  "dpa_web",
+		},
+		{
+			name:      "schema mode",
+			table:     &schema.Table{Name: "users", Schema: "sales"},
+			delimiter: "_",
+			groupBy:   "schema",
+			expected:  "sales",
+		},
+		{
+			name:      "schema mode with empty schema",
+			table:     &schema.Table{Name: "users", Schema: ""},
+			delimiter: "_",
+			groupBy:   "schema",
+			expected:  "default",
+		},
+		{
+			name:      "none mode",
+			table:     &schema.Table{Name: "dpa_web_user", Schema: "mydb"},
+			delimiter: "_",
+			groupBy:   "none",
+			expected:  "Tables",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getTableGroup(tt.table, tt.delimiter, tt.groupBy)
+			if got != tt.expected {
+				t.Errorf("getTableGroup() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGenerate_GroupByNone(t *testing.T) {
+	s := &schema.Schema{
+		Name: "testdb",
+		Tables: []schema.Table{
+			{ID: "1", Name: "dpa_users"},
+			{ID: "2", Name: "dpa_orders"},
+			{ID: "3", Name: "other_table"},
+		},
+	}
+
+	dir := t.TempDir()
+	err := Generate(s, dir, Options{GroupBy: "none"})
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
+	readme := string(content)
+
+	// Should have single "Tables" group
+	if !strings.Contains(readme, "### Tables") {
+		t.Error("README missing Tables group header")
+	}
+	// Should NOT have prefix-based groups
+	if strings.Contains(readme, "### dpa_") {
+		t.Error("README should not have prefix groups with GroupBy=none")
+	}
+}
+
+func TestGenerate_GroupBySchema(t *testing.T) {
+	s := &schema.Schema{
+		Name: "testdb",
+		Tables: []schema.Table{
+			{ID: "1", Name: "users", Schema: "sales"},
+			{ID: "2", Name: "orders", Schema: "sales"},
+			{ID: "3", Name: "products", Schema: "inventory"},
+		},
+	}
+
+	dir := t.TempDir()
+	err := Generate(s, dir, Options{GroupBy: "schema"})
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
+	readme := string(content)
+
+	// Should have schema-based groups
+	if !strings.Contains(readme, "### sales") {
+		t.Error("README missing sales schema group")
+	}
+	if !strings.Contains(readme, "### inventory") {
+		t.Error("README missing inventory schema group")
 	}
 }
 
@@ -732,7 +892,7 @@ func TestGenerate_UnicodeContent(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	err := Generate(s, dir)
+	err := Generate(s, dir, Options{})
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -767,7 +927,7 @@ func TestGenerate_LargeSchema(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	err := Generate(s, dir)
+	err := Generate(s, dir, Options{})
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
