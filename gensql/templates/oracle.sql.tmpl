@@ -1,0 +1,169 @@
+{{- /* =====================================================================================
+   SCHEMA EXPORT - JSON FORMAT - v4.1.0 (Oracle 12c+)
+   =====================================================================================
+   REQUIREMENTS: Oracle 12c+ (JSON_OBJECT, JSON_ARRAYAGG), SELECT on ALL_* views
+   USAGE: sqlplus -S user/pass@db @this.sql > schema.json
+   NOTES: Uses current schema (SYS_CONTEXT); index size/cardinality are placeholders
+   ===================================================================================== */ -}}
+
+WITH fk_info AS (
+    SELECT JSON_OBJECT(
+           KEY 'schema'            VALUE a.owner,
+           KEY 'table'             VALUE a.table_name,
+           KEY 'column'            VALUE b.column_name,
+           KEY 'foreign_key_name'  VALUE a.constraint_name,
+           KEY 'reference_schema'  VALUE c.owner,
+           KEY 'reference_table'   VALUE c.table_name,
+           KEY 'reference_column'  VALUE d.column_name,
+           KEY 'fk_def'            VALUE
+                'FOREIGN KEY ('||b.column_name||') REFERENCES '||
+                c.table_name||'('||d.column_name||') ON DELETE '||
+                DECODE(a.delete_rule,
+                       'CASCADE' , 'CASCADE' ,
+                       'SET NULL', 'SET NULL',
+                       'RESTRICT', 'RESTRICT',
+                       'NO ACTION')
+           RETURNING CLOB
+         ) AS json_data
+    FROM   all_constraints     a
+    JOIN   all_cons_columns    b ON b.owner = a.owner AND b.constraint_name = a.constraint_name
+    JOIN   all_constraints     c ON c.owner = a.r_owner AND c.constraint_name = a.r_constraint_name
+    JOIN   all_cons_columns    d ON d.owner = c.owner AND d.constraint_name = c.constraint_name AND d.position = b.position
+    WHERE  a.constraint_type = 'R'
+    AND    a.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+),
+pk_info AS (
+    SELECT JSON_OBJECT(
+           KEY 'schema' VALUE a.owner,
+           KEY 'table'  VALUE a.table_name,
+           KEY 'column' VALUE LISTAGG(b.column_name, ', ') WITHIN GROUP (ORDER BY b.position),
+           KEY 'pk_def' VALUE 'PRIMARY KEY ('||LISTAGG(b.column_name, ', ') WITHIN GROUP (ORDER BY b.position)||')'
+           RETURNING CLOB
+         ) AS json_data
+    FROM   all_constraints  a
+    JOIN   all_cons_columns b ON b.owner = a.owner AND b.constraint_name = a.constraint_name
+    WHERE  a.constraint_type = 'P'
+    AND    a.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+    GROUP  BY a.owner, a.table_name
+),
+cols AS (
+    SELECT JSON_OBJECT(
+           KEY 'schema'                   VALUE owner,
+           KEY 'table'                    VALUE table_name,
+           KEY 'name'                     VALUE column_name,
+           KEY 'type'                     VALUE LOWER(data_type),
+           KEY 'character_maximum_length' VALUE CASE WHEN data_type LIKE '%CHAR%' THEN TO_CHAR(char_length) ELSE 'null' END,
+           KEY 'precision'                VALUE CASE WHEN data_type IN ('NUMBER','FLOAT','DECIMAL')
+                                                     THEN JSON_OBJECT(KEY 'precision' VALUE data_precision, KEY 'scale' VALUE data_scale)
+                                                     ELSE NULL END,
+           KEY 'ordinal_position'         VALUE column_id,
+           KEY 'nullable'                 VALUE CASE nullable WHEN 'Y' THEN 'true' ELSE 'false' END FORMAT JSON,
+           KEY 'default'                  VALUE '',
+           KEY 'collation'                VALUE '',
+           KEY 'is_identity'              VALUE 'false' FORMAT JSON,
+           KEY 'comment'                  VALUE '',
+           KEY 'generated_expression'     VALUE CASE WHEN virtual_column = 'YES' THEN COALESCE(data_default, '') ELSE '' END,
+           KEY 'generated_type'           VALUE CASE WHEN virtual_column = 'YES' THEN 'VIRTUAL' ELSE '' END
+           RETURNING CLOB
+         ) AS json_data
+    FROM   all_tab_columns
+    WHERE  owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+),
+indexes AS (
+    SELECT JSON_OBJECT(
+             KEY 'schema'          VALUE i.owner,
+             KEY 'table'           VALUE i.table_name,
+             KEY 'name'            VALUE i.index_name,
+             KEY 'size'            VALUE -1,
+             KEY 'column'          VALUE c.column_name,
+             KEY 'index_type'      VALUE LOWER(i.index_type),
+             KEY 'cardinality'     VALUE 0,
+             KEY 'direction'       VALUE CASE c.descend WHEN 'DESC' THEN 'desc' ELSE 'asc' END,
+             KEY 'column_position' VALUE c.column_position,
+             KEY 'unique'          VALUE CASE i.uniqueness WHEN 'UNIQUE' THEN 'true' ELSE 'false' END FORMAT JSON
+             RETURNING CLOB
+           ) AS json_data
+    FROM   all_indexes      i
+    JOIN   all_ind_columns  c ON c.index_owner = i.owner AND c.index_name = i.index_name
+    WHERE  i.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+),
+tbls AS (
+    SELECT JSON_OBJECT(
+           KEY 'schema'    VALUE owner,
+           KEY 'table'     VALUE table_name,
+           KEY 'rows'      VALUE NVL(num_rows, 0),
+           KEY 'type'      VALUE 'TABLE',
+           KEY 'engine'    VALUE '',
+           KEY 'collation' VALUE '',
+           KEY 'comment'   VALUE ''
+           RETURNING CLOB
+         ) AS json_data
+    FROM   all_tables
+    WHERE  owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+),
+views AS (
+    SELECT JSON_OBJECT(
+             KEY 'schema'          VALUE owner,
+             KEY 'view_name'       VALUE view_name,
+             KEY 'view_definition' VALUE ''
+             RETURNING CLOB
+           ) AS json_data
+    FROM   all_views
+    WHERE  owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+),
+triggers AS (
+    SELECT JSON_OBJECT(
+             KEY 'schema'    VALUE owner,
+             KEY 'table'     VALUE table_name,
+             KEY 'name'      VALUE trigger_name,
+             KEY 'timing'    VALUE CASE WHEN trigger_type LIKE 'BEFORE%' THEN 'BEFORE'
+                                        WHEN trigger_type LIKE 'AFTER%' THEN 'AFTER'
+                                        WHEN trigger_type LIKE 'INSTEAD OF%' THEN 'INSTEAD OF'
+                                        ELSE trigger_type END,
+             KEY 'event'     VALUE triggering_event,
+             KEY 'statement' VALUE ''
+             RETURNING CLOB
+           ) AS json_data
+    FROM   all_triggers
+    WHERE  owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+),
+stored_procs AS (
+    SELECT JSON_OBJECT(
+             KEY 'schema'      VALUE owner,
+             KEY 'name'        VALUE object_name,
+             KEY 'type'        VALUE object_type,
+             KEY 'return_type' VALUE '',
+             KEY 'comment'     VALUE '',
+             KEY 'parameters'  VALUE (
+                 SELECT JSON_ARRAYAGG(
+                     JSON_OBJECT(
+                         KEY 'name'     VALUE argument_name,
+                         KEY 'type'     VALUE data_type,
+                         KEY 'mode'     VALUE in_out,
+                         KEY 'position' VALUE position
+                     )
+                 RETURNING CLOB)
+                 FROM all_arguments a
+                 WHERE a.owner = p.owner AND a.object_name = p.object_name
+                   AND a.argument_name IS NOT NULL
+             )
+             RETURNING CLOB
+           ) AS json_data
+    FROM   all_procedures p
+    WHERE  owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+      AND  object_type IN ('PROCEDURE', 'FUNCTION')
+)
+SELECT JSON_OBJECT(
+     KEY 'fk_info'            VALUE (SELECT JSON_ARRAYAGG(json_data RETURNING CLOB) FROM fk_info),
+     KEY 'pk_info'            VALUE (SELECT JSON_ARRAYAGG(json_data RETURNING CLOB) FROM pk_info),
+     KEY 'columns'            VALUE (SELECT JSON_ARRAYAGG(json_data RETURNING CLOB) FROM cols),
+     KEY 'indexes'            VALUE (SELECT JSON_ARRAYAGG(json_data RETURNING CLOB) FROM indexes),
+     KEY 'tables'             VALUE (SELECT JSON_ARRAYAGG(json_data RETURNING CLOB) FROM tbls),
+     KEY 'views'              VALUE (SELECT JSON_ARRAYAGG(json_data RETURNING CLOB) FROM views),
+     KEY 'triggers'           VALUE (SELECT JSON_ARRAYAGG(json_data RETURNING CLOB) FROM triggers),
+     KEY 'stored_procedures'  VALUE (SELECT JSON_ARRAYAGG(json_data RETURNING CLOB) FROM stored_procs),
+     KEY 'database_name'      VALUE SYS_CONTEXT('USERENV','DB_NAME'),
+     KEY 'version'            VALUE ''
+     RETURNING CLOB
+   ) AS metadata_json_to_import
+FROM   dual;

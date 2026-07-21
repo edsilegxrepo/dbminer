@@ -1,0 +1,285 @@
+{{- /* =====================================================================================
+   SCHEMA EXPORT - JSON FORMAT - v4.1.0 (PostgreSQL 10+)
+   =====================================================================================
+   REQUIREMENTS: PostgreSQL 10+, SELECT on information_schema and pg_catalog
+   {{- if .IncludeAdmin }}
+   ADMIN: Includes pg_stat_user_tables for row counts, pg_relation_size for sizes
+   {{- end }}
+   USAGE: psql -d database -t -A -f this.sql > schema.json
+   ===================================================================================== */ -}}
+
+SELECT json_build_object(
+    'fk_info', COALESCE((
+        SELECT json_agg(json_build_object(
+            'schema', n.nspname,
+            'table', CASE WHEN position('.' in c.conrelid::regclass::text) > 0
+                         THEN split_part(c.conrelid::regclass::text, '.', 2)
+                         ELSE c.conrelid::regclass::text END,
+            'column', a.attname,
+            'foreign_key_name', c.conname,
+            'reference_schema', nr.nspname,
+            'reference_table', CASE WHEN position('.' in c.confrelid::regclass::text) > 0
+                                    THEN split_part(c.confrelid::regclass::text, '.', 2)
+                                    ELSE c.confrelid::regclass::text END,
+            'reference_column', af.attname,
+            'fk_def', pg_get_constraintdef(c.oid)
+        ))
+        FROM pg_constraint c
+        JOIN pg_attribute a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+        JOIN pg_class cl ON cl.oid = c.conrelid
+        JOIN pg_namespace n ON n.oid = cl.relnamespace
+        JOIN pg_attribute af ON af.attnum = ANY(c.confkey) AND af.attrelid = c.confrelid
+        JOIN pg_class clf ON clf.oid = c.confrelid
+        JOIN pg_namespace nr ON nr.oid = clf.relnamespace
+        WHERE c.contype = 'f'
+          AND n.nspname NOT IN ('information_schema', 'pg_catalog')
+    ), '[]'::json),
+
+    'pk_info', COALESCE((
+        SELECT json_agg(json_build_object(
+            'schema', n.nspname,
+            'table', CASE WHEN strpos(c.conrelid::regclass::text, '.') > 0
+                         THEN split_part(c.conrelid::regclass::text, '.', 2)
+                         ELSE c.conrelid::regclass::text END,
+            'column', a.attname,
+            'pk_def', pg_get_constraintdef(c.oid)
+        ))
+        FROM pg_constraint c
+        JOIN pg_attribute a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+        JOIN pg_namespace n ON n.oid = c.connamespace
+        WHERE c.contype = 'p'
+          AND n.nspname NOT IN ('information_schema', 'pg_catalog')
+    ), '[]'::json),
+
+    'columns', COALESCE((
+        SELECT json_agg(json_build_object(
+            'schema', cols.table_schema,
+            'table', cols.table_name,
+            'name', cols.column_name,
+            'type', CASE
+                WHEN cols.column_default LIKE 'nextval(%' THEN
+                    CASE WHEN LOWER(cols.data_type) = 'smallint' THEN 'smallserial'
+                         WHEN LOWER(cols.data_type) = 'integer' THEN 'serial'
+                         WHEN LOWER(cols.data_type) = 'bigint' THEN 'bigserial'
+                         ELSE LOWER(cols.data_type) END
+                WHEN cols.data_type = 'ARRAY' THEN format_type(pt.typelem, NULL)
+                WHEN LOWER(cols.data_type) = 'user-defined' THEN format_type(pt.oid, NULL)
+                ELSE LOWER(cols.data_type) END,
+            'ordinal_position', cols.ordinal_position,
+            'character_maximum_length', COALESCE(cols.character_maximum_length::text, 'null'),
+            'precision', CASE WHEN cols.data_type IN ('numeric', 'decimal')
+                THEN json_build_object('precision', cols.numeric_precision, 'scale', cols.numeric_scale)
+                ELSE NULL END,
+            'nullable', cols.is_nullable = 'YES',
+            'default', CASE WHEN cols.column_default LIKE 'nextval(%' THEN ''
+                            ELSE COALESCE(cols.column_default, '') END,
+            'collation', COALESCE(cols.collation_name, ''),
+            'is_identity', cols.is_identity = 'YES' OR cols.column_default LIKE 'nextval(%',
+            'comment', COALESCE(pd.description, ''),
+            'generated_expression', COALESCE(cols.generation_expression, ''),
+            'generated_type', CASE WHEN cols.is_generated = 'ALWAYS' THEN 'STORED' ELSE '' END
+        ) ORDER BY cols.table_schema, cols.table_name, cols.ordinal_position)
+        FROM information_schema.columns cols
+        LEFT JOIN pg_class pc ON pc.relname = cols.table_name
+        LEFT JOIN pg_namespace pn ON pn.oid = pc.relnamespace AND pn.nspname = cols.table_schema
+        LEFT JOIN pg_attribute pa ON pa.attrelid = pc.oid AND pa.attname = cols.column_name
+        LEFT JOIN pg_type pt ON pt.oid = pa.atttypid
+        LEFT JOIN pg_description pd ON pd.objoid = pc.oid AND pd.objsubid = pa.attnum
+        WHERE cols.table_schema NOT IN ('information_schema', 'pg_catalog')
+    ), '[]'::json),
+
+    'indexes', COALESCE((
+        SELECT json_agg(json_build_object(
+            'schema', schemaname,
+            'table', tablename,
+            'name', indexname,
+            'column', a.attname,
+            'index_type', am.amname,
+{{- if .IncludeAdmin }}
+            'cardinality', COALESCE(c.reltuples::bigint, 0),
+            'size', pg_relation_size(ix.indexrelid),
+{{- else }}
+            'cardinality', 0,
+            'size', -1,
+{{- end }}
+            'direction', CASE WHEN o.option & 1 = 1 THEN 'desc' ELSE 'asc' END,
+            'column_position', a.attnum,
+            'unique', ix.indisunique
+        ) ORDER BY schemaname, tablename, indexname)
+        FROM pg_indexes pi
+        JOIN pg_class c ON c.relname = pi.indexname
+        JOIN pg_index ix ON ix.indexrelid = c.oid
+        JOIN pg_class t ON t.oid = ix.indrelid
+        JOIN pg_am am ON am.oid = c.relam
+        CROSS JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ord)
+        JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
+        LEFT JOIN LATERAL unnest(ix.indoption) WITH ORDINALITY AS o(option, ord) ON k.ord = o.ord
+        WHERE pi.schemaname NOT IN ('pg_catalog', 'information_schema')
+    ), '[]'::json),
+
+    'tables', COALESCE((
+        SELECT json_agg(json_build_object(
+            'schema', t.table_schema,
+            'table', t.table_name,
+{{- if .IncludeAdmin }}
+            'rows', COALESCE(s.n_live_tup, 0),
+{{- else }}
+            'rows', 0,
+{{- end }}
+            'type', t.table_type,
+            'engine', '',
+            'collation', '',
+{{- if .IncludeAdmin }}
+            'data_size', COALESCE(pg_table_size(c.oid), 0),
+            'index_size', COALESCE(pg_indexes_size(c.oid), 0),
+{{- else }}
+            'data_size', 0,
+            'index_size', 0,
+{{- end }}
+            'comment', COALESCE(obj_description(c.oid), '')
+        ) ORDER BY t.table_schema, t.table_name)
+        FROM information_schema.tables t
+        LEFT JOIN pg_class c ON c.relname = t.table_name
+        LEFT JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = t.table_schema
+{{- if .IncludeAdmin }}
+        LEFT JOIN pg_stat_user_tables s ON s.schemaname = t.table_schema AND s.relname = t.table_name
+{{- end }}
+        WHERE t.table_schema NOT IN ('information_schema', 'pg_catalog')
+          AND t.table_type = 'BASE TABLE'
+    ), '[]'::json),
+
+    'views', COALESCE((
+        SELECT json_agg(json_build_object(
+            'schema', schemaname,
+            'view_name', viewname,
+            'view_definition', ''
+        ) ORDER BY schemaname, viewname)
+        FROM pg_views
+        WHERE schemaname NOT IN ('information_schema', 'pg_catalog')
+    ), '[]'::json),
+
+    'check_constraints', COALESCE((
+        SELECT json_agg(json_build_object(
+            'schema', n.nspname,
+            'table', CASE WHEN position('.' in c.conrelid::regclass::text) > 0
+                         THEN split_part(c.conrelid::regclass::text, '.', 2)
+                         ELSE c.conrelid::regclass::text END,
+            'expression', pg_get_constraintdef(c.oid)
+        ))
+        FROM pg_constraint c
+        JOIN pg_namespace n ON n.oid = c.connamespace
+        WHERE c.contype = 'c'
+          AND n.nspname NOT IN ('information_schema', 'pg_catalog')
+    ), '[]'::json),
+
+    'custom_types', COALESCE((
+        SELECT json_agg(type_data)
+        FROM (
+            -- Enums
+            SELECT json_build_object(
+                'schema', n.nspname,
+                'type', t.typname,
+                'kind', 'enum',
+                'values', array_agg(e.enumlabel ORDER BY e.enumsortorder)
+            ) AS type_data
+            FROM pg_type t
+            JOIN pg_enum e ON t.oid = e.enumtypid
+            JOIN pg_namespace n ON n.oid = t.typnamespace
+            WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+            GROUP BY n.nspname, t.typname
+            UNION ALL
+            -- Composite types
+            SELECT json_build_object(
+                'schema', n.nspname,
+                'type', t.typname,
+                'kind', 'composite',
+                'fields', json_agg(json_build_object(
+                    'field', a.attname,
+                    'type', format_type(a.atttypid, a.atttypmod)
+                ) ORDER BY a.attnum)
+            ) AS type_data
+            FROM pg_type t
+            JOIN pg_namespace n ON n.oid = t.typnamespace
+            JOIN pg_class c ON c.oid = t.typrelid
+            JOIN pg_attribute a ON a.attrelid = c.oid
+            WHERE t.typtype = 'c' AND c.relkind = 'c'
+              AND a.attnum > 0 AND NOT a.attisdropped
+              AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+            GROUP BY n.nspname, t.typname
+        ) types
+    ), '[]'::json),
+
+    'sequences', COALESCE((
+        SELECT json_agg(json_build_object(
+            'schema', sequence_schema,
+            'name', sequence_name,
+            'data_type', data_type,
+            'start_value', start_value,
+            'increment', increment,
+            'min_value', minimum_value,
+            'max_value', maximum_value
+        ) ORDER BY sequence_schema, sequence_name)
+        FROM information_schema.sequences
+        WHERE sequence_schema NOT IN ('information_schema', 'pg_catalog')
+    ), '[]'::json),
+
+    'triggers', COALESCE((
+        SELECT json_agg(json_build_object(
+            'schema', n.nspname,
+            'table', c.relname,
+            'name', t.tgname,
+            'timing', CASE
+                WHEN t.tgtype & 2 = 2 THEN 'BEFORE'
+                WHEN t.tgtype & 64 = 64 THEN 'INSTEAD OF'
+                ELSE 'AFTER' END,
+            'event', NULLIF(CONCAT_WS(',',
+                CASE WHEN t.tgtype & 4 = 4 THEN 'INSERT' END,
+                CASE WHEN t.tgtype & 8 = 8 THEN 'DELETE' END,
+                CASE WHEN t.tgtype & 16 = 16 THEN 'UPDATE' END
+            ), ''),
+            'statement', ''
+        ))
+        FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE NOT t.tgisinternal
+          AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+    ), '[]'::json),
+
+    'stored_procedures', COALESCE((
+        SELECT json_agg(json_build_object(
+            'schema', n.nspname,
+            'name', p.proname,
+            'type', CASE p.prokind WHEN 'f' THEN 'FUNCTION' WHEN 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END,
+            'return_type', COALESCE(pg_get_function_result(p.oid), ''),
+            'comment', COALESCE(d.description, ''),
+            'parameters', CASE WHEN p.pronargs = 0 THEN '[]'::json ELSE COALESCE((
+                SELECT json_agg(json_build_object(
+                    'name', COALESCE(pnames[i], 'arg' || i::text),
+                    'type', format_type(ptypes[i], NULL),
+                    'mode', CASE COALESCE(pmodes[i], 'i')
+                        WHEN 'i' THEN 'IN'
+                        WHEN 'o' THEN 'OUT'
+                        WHEN 'b' THEN 'INOUT'
+                        WHEN 'v' THEN 'VARIADIC'
+                        ELSE 'IN' END,
+                    'position', i
+                ) ORDER BY i)
+                FROM generate_series(1, COALESCE(array_length(p.proallargtypes, 1), p.pronargs)) AS i,
+                LATERAL (SELECT
+                    COALESCE(p.proargnames, ARRAY[]::text[]) AS pnames,
+                    COALESCE(p.proallargtypes, p.proargtypes::oid[]) AS ptypes,
+                    COALESCE(p.proargmodes::char[], ARRAY[]::char[]) AS pmodes
+                ) AS params
+            ), '[]'::json) END
+        ))
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        LEFT JOIN pg_description d ON d.objoid = p.oid
+        WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND p.prokind IN ('f', 'p')
+    ), '[]'::json),
+
+    'database_name', current_database(),
+    'version', version()
+) AS metadata_json_to_import;

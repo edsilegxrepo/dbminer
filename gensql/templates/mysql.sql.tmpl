@@ -1,0 +1,181 @@
+{{- /* =====================================================================================
+   SCHEMA EXPORT - JSON FORMAT - v4.1.0 (MySQL 8.0+)
+   =====================================================================================
+   REQUIREMENTS: MySQL 8.0+ (JSON_ARRAYAGG, JSON_OBJECT), SELECT on information_schema
+   {{- if .IncludeAdmin }}
+   ADMIN: Includes mysql.innodb_index_stats for index sizes (requires SELECT on mysql.*)
+   {{- end }}
+   ===================================================================================== */ -}}
+
+{{if .StoredProc}}
+DELIMITER $$
+
+USE {{.DBName}}$$
+
+DROP PROCEDURE IF EXISTS {{.SPName}}$$
+
+CREATE PROCEDURE {{.SPName}}()
+    COMMENT 'Export database schema as JSON (MySQL 8.0+)'
+BEGIN
+{{end}}
+SELECT JSON_OBJECT(
+    'fk_info', IFNULL((
+        SELECT JSON_ARRAYAGG(JSON_OBJECT(
+            'schema', kcu.TABLE_SCHEMA,
+            'table', kcu.TABLE_NAME,
+            'column', kcu.COLUMN_NAME,
+            'foreign_key_name', kcu.CONSTRAINT_NAME,
+            'reference_schema', kcu.REFERENCED_TABLE_SCHEMA,
+            'reference_table', kcu.REFERENCED_TABLE_NAME,
+            'reference_column', kcu.REFERENCED_COLUMN_NAME,
+            'fk_def', CONCAT('FOREIGN KEY (', kcu.COLUMN_NAME, ') REFERENCES ',
+                kcu.REFERENCED_TABLE_NAME, '(', kcu.REFERENCED_COLUMN_NAME, ') ON UPDATE ',
+                rc.UPDATE_RULE, ' ON DELETE ', rc.DELETE_RULE)
+        ))
+        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+        JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+            ON kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+            AND kcu.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
+        WHERE kcu.REFERENCED_TABLE_NAME IS NOT NULL
+            AND kcu.TABLE_SCHEMA = DATABASE()
+    ), JSON_ARRAY()),
+
+    'pk_info', IFNULL((
+        SELECT JSON_ARRAYAGG(JSON_OBJECT(
+            'schema', TABLE_SCHEMA,
+            'table', TABLE_NAME,
+            'column', COLUMN_NAME,
+            'pk_def', CONCAT('PRIMARY KEY (', COLUMN_NAME, ')')
+        ))
+        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+        WHERE CONSTRAINT_NAME = 'PRIMARY'
+            AND TABLE_SCHEMA = DATABASE()
+    ), JSON_ARRAY()),
+
+    'columns', IFNULL((
+        SELECT JSON_ARRAYAGG(JSON_OBJECT(
+            'schema', TABLE_SCHEMA,
+            'table', TABLE_NAME,
+            'name', COLUMN_NAME,
+            'type', LOWER(DATA_TYPE),
+            'ordinal_position', ORDINAL_POSITION,
+            'character_maximum_length', IFNULL(CAST(CHARACTER_MAXIMUM_LENGTH AS CHAR), 'null'),
+            'precision', CASE
+                WHEN DATA_TYPE IN ('decimal', 'numeric')
+                THEN JSON_OBJECT('precision', NUMERIC_PRECISION, 'scale', NUMERIC_SCALE)
+                ELSE NULL END,
+            'nullable', IS_NULLABLE = 'YES',
+            'default', IFNULL(COLUMN_DEFAULT, ''),
+            'collation', IFNULL(COLLATION_NAME, ''),
+            'is_identity', EXTRA LIKE '%auto_increment%',
+            'comment', IFNULL(COLUMN_COMMENT, ''),
+            'generated_expression', IFNULL(GENERATION_EXPRESSION, ''),
+            'generated_type', CASE WHEN EXTRA LIKE '%STORED GENERATED%' THEN 'STORED'
+                                   WHEN EXTRA LIKE '%VIRTUAL GENERATED%' THEN 'VIRTUAL'
+                                   ELSE '' END
+        ) ORDER BY TABLE_NAME, ORDINAL_POSITION)
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+    ), JSON_ARRAY()),
+
+    'indexes', IFNULL((
+        SELECT JSON_ARRAYAGG(JSON_OBJECT(
+            'schema', s.TABLE_SCHEMA,
+            'table', s.TABLE_NAME,
+            'name', s.INDEX_NAME,
+            'column', s.COLUMN_NAME,
+            'index_type', LOWER(s.INDEX_TYPE),
+            'cardinality', IFNULL(s.CARDINALITY, 0),
+{{- if .IncludeAdmin }}
+            'size', IFNULL(ist.stat_value * @@innodb_page_size, -1),
+{{- else }}
+            'size', -1,
+{{- end }}
+            'direction', IF(s.COLLATION = 'D', 'desc', 'asc'),
+            'column_position', s.SEQ_IN_INDEX,
+            'unique', s.NON_UNIQUE = 0
+        ) ORDER BY s.TABLE_NAME, s.INDEX_NAME, s.SEQ_IN_INDEX)
+        FROM INFORMATION_SCHEMA.STATISTICS s
+{{- if .IncludeAdmin }}
+        LEFT JOIN mysql.innodb_index_stats ist
+            ON ist.database_name = s.TABLE_SCHEMA
+            AND ist.table_name = s.TABLE_NAME
+            AND ist.index_name = s.INDEX_NAME
+            AND ist.stat_name = 'size'
+{{- end }}
+        WHERE s.TABLE_SCHEMA = DATABASE()
+    ), JSON_ARRAY()),
+
+    'tables', IFNULL((
+        SELECT JSON_ARRAYAGG(JSON_OBJECT(
+            'schema', TABLE_SCHEMA,
+            'table', TABLE_NAME,
+            'rows', IFNULL(TABLE_ROWS, 0),
+            'type', TABLE_TYPE,
+            'engine', IFNULL(ENGINE, ''),
+            'collation', IFNULL(TABLE_COLLATION, ''),
+            'data_size', IFNULL(DATA_LENGTH, 0),
+            'index_size', IFNULL(INDEX_LENGTH, 0),
+            'auto_increment', IFNULL(AUTO_INCREMENT, 0),
+            'comment', IFNULL(TABLE_COMMENT, '')
+        ) ORDER BY TABLE_NAME)
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_TYPE = 'BASE TABLE'
+    ), JSON_ARRAY()),
+
+    'views', IFNULL((
+        SELECT JSON_ARRAYAGG(JSON_OBJECT(
+            'schema', TABLE_SCHEMA,
+            'view_name', TABLE_NAME,
+            'view_definition', ''
+        ) ORDER BY TABLE_NAME)
+        FROM INFORMATION_SCHEMA.VIEWS
+        WHERE TABLE_SCHEMA = DATABASE()
+    ), JSON_ARRAY()),
+
+    'triggers', IFNULL((
+        SELECT JSON_ARRAYAGG(JSON_OBJECT(
+            'schema', TRIGGER_SCHEMA,
+            'table', EVENT_OBJECT_TABLE,
+            'name', TRIGGER_NAME,
+            'timing', ACTION_TIMING,
+            'event', EVENT_MANIPULATION,
+            'statement', ''
+        ) ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME)
+        FROM INFORMATION_SCHEMA.TRIGGERS
+        WHERE TRIGGER_SCHEMA = DATABASE()
+    ), JSON_ARRAY()),
+
+    'stored_procedures', IFNULL((
+        SELECT JSON_ARRAYAGG(JSON_OBJECT(
+            'schema', r.ROUTINE_SCHEMA,
+            'name', r.ROUTINE_NAME,
+            'type', r.ROUTINE_TYPE,
+            'return_type', IFNULL(r.DATA_TYPE, ''),
+            'comment', IFNULL(r.ROUTINE_COMMENT, ''),
+            'parameters', IFNULL((
+                SELECT JSON_ARRAYAGG(JSON_OBJECT(
+                    'name', p.PARAMETER_NAME,
+                    'type', p.DATA_TYPE,
+                    'mode', p.PARAMETER_MODE,
+                    'position', p.ORDINAL_POSITION
+                ) ORDER BY p.ORDINAL_POSITION)
+                FROM INFORMATION_SCHEMA.PARAMETERS p
+                WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA
+                  AND p.SPECIFIC_NAME = r.ROUTINE_NAME
+                  AND p.PARAMETER_NAME IS NOT NULL
+            ), JSON_ARRAY())
+        ) ORDER BY r.ROUTINE_TYPE, r.ROUTINE_NAME)
+        FROM INFORMATION_SCHEMA.ROUTINES r
+        WHERE r.ROUTINE_SCHEMA = DATABASE()
+    ), JSON_ARRAY()),
+
+    'database_name', DATABASE(),
+    'version', VERSION()
+) AS metadata_json_to_import;
+{{if .StoredProc}}
+END$$
+
+DELIMITER ;
+{{end}}

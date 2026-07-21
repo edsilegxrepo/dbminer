@@ -1,0 +1,165 @@
+{{- /* =====================================================================================
+   SCHEMA EXPORT - JSON FORMAT - v4.1.0 (SQLite 3.9+)
+   =====================================================================================
+   REQUIREMENTS: SQLite 3.9+ (JSON1 extension)
+   USAGE: sqlite3 database.db < this.sql > schema.json
+   NOTES: SQLite has no schemas; cardinality/index size unavailable; no stored procedures
+   ===================================================================================== */ -}}
+
+WITH fk_info AS (
+    SELECT json_group_array(
+        json_object(
+            'schema', '',
+            'table', m.name,
+            'column', fk."from",
+            'foreign_key_name', 'fk_' || m.name || '_' || fk."from" || '_' || fk."table" || '_' || fk."to",
+            'reference_schema', '',
+            'reference_table', fk."table",
+            'reference_column', fk."to",
+            'fk_def', 'FOREIGN KEY (' || fk."from" || ') REFERENCES ' || fk."table" || '(' || fk."to" || ')' ||
+                      ' ON UPDATE ' || fk.on_update || ' ON DELETE ' || fk.on_delete
+        )
+    ) AS fk_metadata
+    FROM sqlite_master m
+    JOIN pragma_foreign_key_list(m.name) fk ON m.type = 'table'
+),
+pk_info AS (
+    SELECT json_group_array(
+        json_object(
+            'schema', '',
+            'table', pk.table_name,
+            'column', pk.pk_column,
+            'pk_def', 'PRIMARY KEY (' || pk.pk_column || ')'
+        )
+    ) AS pk_metadata
+    FROM (
+        SELECT m.name AS table_name,
+               GROUP_CONCAT(p.name) AS pk_column
+        FROM sqlite_master m
+        JOIN pragma_table_info(m.name) p ON m.type = 'table' AND p.pk > 0
+        GROUP BY m.name
+    ) pk
+),
+indexes_metadata AS (
+    SELECT json_group_array(
+        json_object(
+            'schema', '',
+            'table', m.name,
+            'name', idx.name,
+            'column', ic.name,
+            'index_type', 'btree',
+            'cardinality', 0,
+            'size', -1,
+            'unique', (CASE WHEN idx."unique" = 1 THEN json('true') ELSE json('false') END),
+            'direction', 'asc',
+            'column_position', ic.seqno + 1
+        )
+    ) AS indexes_metadata
+    FROM sqlite_master m
+    JOIN pragma_index_list(m.name) idx ON m.type = 'table'
+    JOIN pragma_index_info(idx.name) ic
+),
+cols AS (
+    SELECT json_group_array(
+        json_object(
+            'schema', '',
+            'table', m.name,
+            'name', p.name,
+            'type', CASE WHEN INSTR(LOWER(p.type), '(') > 0
+                         THEN SUBSTR(LOWER(p.type), 1, INSTR(LOWER(p.type), '(') - 1)
+                         ELSE LOWER(p.type) END,
+            'ordinal_position', p.cid,
+            'nullable', (CASE WHEN p."notnull" = 0 THEN json('true') ELSE json('false') END),
+            'collation', '',
+            'character_maximum_length', CASE
+                WHEN LOWER(p.type) LIKE 'char%' OR LOWER(p.type) LIKE 'varchar%' THEN
+                    CASE WHEN INSTR(p.type, '(') > 0
+                         THEN REPLACE(SUBSTR(p.type, INSTR(p.type, '(') + 1,
+                              LENGTH(p.type) - INSTR(p.type, '(') - 1), ')', '')
+                         ELSE 'null' END
+                ELSE 'null' END,
+            'precision', CASE
+                WHEN LOWER(p.type) LIKE 'decimal%' OR LOWER(p.type) LIKE 'numeric%' THEN
+                    CASE WHEN instr(p.type, '(') > 0 THEN
+                        json_object(
+                            'precision', CAST(substr(p.type, instr(p.type, '(') + 1,
+                                        instr(p.type, ',') - instr(p.type, '(') - 1) AS INTEGER),
+                            'scale', CAST(substr(p.type, instr(p.type, ',') + 1,
+                                     instr(p.type, ')') - instr(p.type, ',') - 1) AS INTEGER)
+                        )
+                    ELSE null END
+                ELSE null END,
+            'default', COALESCE(REPLACE(p.dflt_value, '"', '\"'), ''),
+            'is_identity', CASE
+                WHEN p.pk = 1 AND LOWER(p.type) LIKE '%int%' THEN json('true')
+                WHEN LOWER((SELECT sql FROM sqlite_master WHERE name = m.name)) LIKE '%' || p.name || '%autoincrement%' THEN json('true')
+                ELSE json('false') END,
+            'generated_expression', '',
+            'generated_type', ''
+        )
+    ) AS cols_metadata
+    FROM sqlite_master m
+    JOIN pragma_table_info(m.name) p ON m.type IN ('table', 'view')
+),
+tbls AS (
+    SELECT json_group_array(
+        json_object(
+            'schema', '',
+            'table', m.name,
+            'rows', -1,
+            'type', 'table',
+            'engine', '',
+            'collation', '',
+            'comment', ''
+        )
+    ) AS tbls_metadata
+    FROM sqlite_master m
+    WHERE m.type = 'table'
+),
+views AS (
+    SELECT json_group_array(
+        json_object(
+            'schema', '',
+            'view_name', m.name,
+            'view_definition', ''
+        )
+    ) AS views_metadata
+    FROM sqlite_master m
+    WHERE m.type = 'view'
+),
+triggers AS (
+    SELECT json_group_array(
+        json_object(
+            'schema', '',
+            'table', tbl_name,
+            'name', name,
+            'timing', CASE
+                WHEN LOWER(sql) LIKE '% before insert %' OR LOWER(sql) LIKE '% before update%' OR LOWER(sql) LIKE '% before delete %' THEN 'BEFORE'
+                WHEN LOWER(sql) LIKE '% instead of %' THEN 'INSTEAD OF'
+                ELSE 'AFTER' END,
+            'event', CASE
+                WHEN LOWER(sql) LIKE '% insert on %' OR LOWER(sql) LIKE '% instead of insert on %' THEN 'INSERT'
+                WHEN LOWER(sql) LIKE '% update on %' OR LOWER(sql) LIKE '% update of %' OR LOWER(sql) LIKE '% instead of update on %' THEN 'UPDATE'
+                WHEN LOWER(sql) LIKE '% delete on %' OR LOWER(sql) LIKE '% instead of delete on %' THEN 'DELETE'
+                ELSE 'UNKNOWN' END,
+            'statement', ''
+        )
+    ) AS triggers_metadata
+    FROM sqlite_master
+    WHERE type = 'trigger'
+)
+SELECT replace(replace(replace(
+    json_object(
+        'fk_info', json((SELECT fk_metadata FROM fk_info)),
+        'pk_info', json((SELECT pk_metadata FROM pk_info)),
+        'columns', json((SELECT cols_metadata FROM cols)),
+        'indexes', json((SELECT indexes_metadata FROM indexes_metadata)),
+        'tables', json((SELECT tbls_metadata FROM tbls)),
+        'views', json((SELECT views_metadata FROM views)),
+        'triggers', json((SELECT triggers_metadata FROM triggers)),
+        'stored_procedures', json('[]'),
+        'database_name', 'sqlite',
+        'version', sqlite_version()
+    ),
+    '\"', '"'), '"[', '['), ']"', ']'
+) AS metadata_json_to_import;

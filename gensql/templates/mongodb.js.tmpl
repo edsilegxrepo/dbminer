@@ -1,0 +1,263 @@
+// =====================================================================================
+// SCHEMA EXPORT - JSON FORMAT - v4.1.0 (MongoDB 4.4+)
+// =====================================================================================
+// REQUIREMENTS: MongoDB 4.4+, mongosh or mongo shell
+// USAGE: mongosh "mongodb://host:port/{{.DBName}}" --quiet this.js > schema.json
+//        mongo "mongodb://host:port/{{.DBName}}" --quiet this.js > schema.json
+// NOTES: Schema is INFERRED from sampling documents. MongoDB is schemaless,
+//        so this represents the de-facto schema observed in the data.
+//        Nested objects expanded to {{.MaxDepth}} levels. Field frequency tracked.
+// CONFIG: Sample size={{.SampleSize}}, Max depth={{.MaxDepth}}
+// =====================================================================================
+
+const SAMPLE_SIZE = {{.SampleSize}};  // Documents to sample per collection
+const MAX_DEPTH = {{.MaxDepth}};      // How deep to expand nested objects
+
+// Infer JavaScript type with MongoDB-specific handling
+function inferType(value) {
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+    if (Array.isArray(value)) return 'array';
+    if (value instanceof ObjectId) return 'objectid';
+    if (value instanceof Date) return 'date';
+    if (value instanceof BinData) return 'bindata';
+    if (value instanceof NumberLong) return 'long';
+    if (value instanceof NumberInt) return 'int';
+    if (value instanceof NumberDecimal) return 'decimal';
+    if (value instanceof Timestamp) return 'timestamp';
+    if (typeof value === 'object') return 'object';
+    return typeof value;  // string, number, boolean
+}
+
+// Infer array element type from sample
+function inferArrayType(arr) {
+    if (!arr || arr.length === 0) return 'unknown';
+    const types = new Set();
+    arr.slice(0, 10).forEach(el => types.add(inferType(el)));
+    if (types.size === 1) return types.values().next().value;
+    return Array.from(types).join('|');
+}
+
+// Recursively analyze document structure
+function analyzeStructure(doc, prefix, depth, fieldStats) {
+    if (depth > MAX_DEPTH || !doc || typeof doc !== 'object') return;
+
+    for (const [key, value] of Object.entries(doc)) {
+        if (key === '_id' && prefix === '') continue;  // Handle _id separately
+
+        const fieldPath = prefix ? `${prefix}.${key}` : key;
+        const type = inferType(value);
+
+        if (!fieldStats[fieldPath]) {
+            fieldStats[fieldPath] = {
+                types: {},
+                count: 0,
+                nullable: false,
+                arrayElementType: null
+            };
+        }
+
+        fieldStats[fieldPath].count++;
+        fieldStats[fieldPath].types[type] = (fieldStats[fieldPath].types[type] || 0) + 1;
+
+        if (value === null) {
+            fieldStats[fieldPath].nullable = true;
+        }
+
+        // Track array element types
+        if (type === 'array' && Array.isArray(value) && value.length > 0) {
+            fieldStats[fieldPath].arrayElementType = inferArrayType(value);
+            // If array contains objects, analyze first element structure
+            if (typeof value[0] === 'object' && value[0] !== null && !Array.isArray(value[0])) {
+                analyzeStructure(value[0], fieldPath + '[]', depth + 1, fieldStats);
+            }
+        }
+
+        // Recurse into nested objects
+        if (type === 'object' && depth < MAX_DEPTH) {
+            analyzeStructure(value, fieldPath, depth + 1, fieldStats);
+        }
+    }
+}
+
+// Determine primary type from type frequency map
+function primaryType(typeMap) {
+    let maxCount = 0;
+    let primary = 'unknown';
+    for (const [type, count] of Object.entries(typeMap)) {
+        if (count > maxCount) {
+            maxCount = count;
+            primary = type;
+        }
+    }
+    return primary;
+}
+
+// Main export function
+function exportSchema() {
+    const dbName = db.getName();
+    const collections = db.getCollectionNames().filter(n => !n.startsWith('system.'));
+
+    const result = {
+        fk_info: [],      // MongoDB has no foreign keys
+        pk_info: [],      // Will populate with _id
+        columns: [],
+        indexes: [],
+        tables: [],
+        views: [],
+        triggers: [],     // MongoDB has no triggers (uses change streams)
+        stored_procedures: [],  // MongoDB has no stored procedures
+        database_name: dbName,
+        version: db.version()
+    };
+
+    for (const collName of collections) {
+        const coll = db.getCollection(collName);
+        const collInfo = db.getCollectionInfos({name: collName})[0];
+        const isView = collInfo?.type === 'view';
+
+        // Handle views separately - just record metadata, don't analyze
+        if (isView) {
+            result.views.push({
+                schema: '',
+                view_name: collName,
+                view_definition: ''
+            });
+            continue;  // Skip field analysis for views
+        }
+
+        // Get document count for collections
+{{- if .IncludeAdmin }}
+        const docCount = coll.estimatedDocumentCount();
+{{- else }}
+        const docCount = -1;
+{{- end }}
+
+        result.tables.push({
+            schema: '',
+            table: collName,
+            rows: docCount,
+            type: 'COLLECTION',
+            engine: 'MongoDB',
+            collation: '',
+            comment: 'Inferred schema from sampling'
+        });
+
+        // Add _id as primary key
+        result.pk_info.push({
+            schema: '',
+            table: collName,
+            column: '_id',
+            pk_def: 'PRIMARY KEY (_id)'
+        });
+
+        // Sample documents and analyze structure
+        const fieldStats = {};
+        const samples = coll.aggregate([{$sample: {size: SAMPLE_SIZE}}]).toArray();
+        const sampleCount = samples.length;
+
+        // Analyze each sampled document
+        for (const doc of samples) {
+            analyzeStructure(doc, '', 0, fieldStats);
+        }
+
+        // Reset ordinal position for each collection
+        let ordinalPos = 0;
+
+        // Add _id column first
+        ordinalPos++;
+        result.columns.push({
+            schema: '',
+            table: collName,
+            name: '_id',
+            type: 'objectid',
+            ordinal_position: ordinalPos,
+            character_maximum_length: 'null',
+            precision: null,
+            nullable: false,
+            default: '',
+            collation: '',
+            is_identity: true,
+            comment: 'Primary key (auto-generated if not provided)',
+            generated_expression: '',
+            generated_type: ''
+        });
+
+        // Convert field stats to columns
+        const sortedFields = Object.keys(fieldStats).sort();
+        for (const fieldPath of sortedFields) {
+            const stats = fieldStats[fieldPath];
+            const type = primaryType(stats.types);
+            const frequency = sampleCount > 0 ? (stats.count / sampleCount * 100).toFixed(0) : 0;
+            const isRequired = stats.count === sampleCount && !stats.nullable;
+
+            // Build type string with array element info
+            let typeStr = type;
+            if (type === 'array' && stats.arrayElementType) {
+                typeStr = `array<${stats.arrayElementType}>`;
+            }
+
+            // Build comment with frequency info
+            let comment = `${frequency}% occurrence`;
+            if (Object.keys(stats.types).length > 1) {
+                const typeList = Object.entries(stats.types)
+                    .map(([t, c]) => `${t}:${c}`)
+                    .join(', ');
+                comment += ` (types: ${typeList})`;
+            }
+
+            ordinalPos++;
+            result.columns.push({
+                schema: '',
+                table: collName,
+                name: fieldPath,
+                type: typeStr,
+                ordinal_position: ordinalPos,
+                character_maximum_length: 'null',
+                precision: null,
+                nullable: !isRequired,
+                default: '',
+                collation: '',
+                is_identity: false,
+                comment: comment,
+                generated_expression: '',
+                generated_type: ''
+            });
+        }
+
+        // Get indexes (with error handling)
+        try {
+            const indexes = coll.getIndexes();
+            for (const idx of indexes) {
+                const idxName = idx.name;
+                const isUnique = idx.unique || false;
+                let colPos = 0;
+
+                for (const [field, direction] of Object.entries(idx.key)) {
+                    colPos++;
+                    result.indexes.push({
+                        schema: '',
+                        table: collName,
+                        name: idxName,
+                        column: field,
+                        index_type: idx.textIndexVersion ? 'text' :
+                                   idx['2dsphereIndexVersion'] ? '2dsphere' :
+                                   idx['2d'] ? '2d' : 'btree',
+                        cardinality: 0,
+                        size: -1,
+                        direction: direction === 1 ? 'asc' : direction === -1 ? 'desc' : 'asc',
+                        column_position: colPos,
+                        unique: isUnique || idxName === '_id_'
+                    });
+                }
+            }
+        } catch (e) {
+            // Skip indexes if permission denied
+        }
+    }
+
+    return result;
+}
+
+// Execute and output
+print(JSON.stringify(exportSchema(), null, 2));
