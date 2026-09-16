@@ -574,9 +574,9 @@ func TestToBool(t *testing.T) {
 		{"string false", "false", false},
 		{"string 0", "0", false},
 		{"string empty", "", false},
-		{"string yes", "yes", true},   // MySQL nullable format
-		{"string YES", "YES", true},   // MySQL nullable format uppercase
-		{"string y", "y", true},       // Short form
+		{"string yes", "yes", true}, // MySQL nullable format
+		{"string YES", "YES", true}, // MySQL nullable format uppercase
+		{"string y", "y", true},     // Short form
 		{"float64 1", float64(1), true},
 		{"float64 0", float64(0), false},
 		{"float64 negative", float64(-1), true},

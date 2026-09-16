@@ -183,10 +183,10 @@ func TestListDrivers(t *testing.T) {
 func TestAllDriversGenerateSQL_Basic(t *testing.T) {
 	drivers := ListDrivers()
 	opts := GenerateOptions{
-		DBName:   "testdb",
-		SPName:   "sp_export",
-		Direct:   false,
-		NoAdmin:  false,
+		DBName:  "testdb",
+		SPName:  "sp_export",
+		Direct:  false,
+		NoAdmin: false,
 	}
 
 	for _, name := range drivers {

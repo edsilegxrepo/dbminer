@@ -23,7 +23,7 @@ func TestLoadRaw_ValidJSON(t *testing.T) {
 		"views": []
 	}`
 
-	if err := os.WriteFile(fixture, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(fixture, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -83,7 +83,7 @@ func TestLoadRaw_AllFields(t *testing.T) {
 		]
 	}`
 
-	if err := os.WriteFile(fixture, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(fixture, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -156,7 +156,7 @@ func TestLoadRaw_InvalidJSON(t *testing.T) {
 	dir := t.TempDir()
 	fixture := filepath.Join(dir, "invalid.json")
 
-	if err := os.WriteFile(fixture, []byte("not valid json"), 0644); err != nil {
+	if err := os.WriteFile(fixture, []byte("not valid json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -170,7 +170,7 @@ func TestLoadRaw_EmptyFile(t *testing.T) {
 	dir := t.TempDir()
 	fixture := filepath.Join(dir, "empty.json")
 
-	if err := os.WriteFile(fixture, []byte(""), 0644); err != nil {
+	if err := os.WriteFile(fixture, []byte(""), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -184,7 +184,7 @@ func TestLoadRaw_EmptyObject(t *testing.T) {
 	dir := t.TempDir()
 	fixture := filepath.Join(dir, "empty_obj.json")
 
-	if err := os.WriteFile(fixture, []byte("{}"), 0644); err != nil {
+	if err := os.WriteFile(fixture, []byte("{}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -220,7 +220,7 @@ func TestLoadRaw_NullableFieldTypes(t *testing.T) {
 		"views": []
 	}`
 
-	if err := os.WriteFile(fixture, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(fixture, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -252,7 +252,7 @@ func TestLoadRaw_IndexSizeVariants(t *testing.T) {
 		"views": []
 	}`
 
-	if err := os.WriteFile(fixture, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(fixture, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -284,7 +284,7 @@ func TestLoadRaw_PrecisionVariants(t *testing.T) {
 		"views": []
 	}`
 
-	if err := os.WriteFile(fixture, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(fixture, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -313,7 +313,7 @@ func TestLoadRaw_UnicodeContent(t *testing.T) {
 		"views": []
 	}`
 
-	if err := os.WriteFile(fixture, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(fixture, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

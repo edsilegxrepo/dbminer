@@ -104,7 +104,7 @@ func getTablePrefix(name, delimiter string) string {
 }
 
 // getTableGroup returns the grouping key for a table based on Options.GroupBy.
-func getTableGroup(t *schema.Table, delimiter string, groupBy string) string {
+func getTableGroup(t *schema.Table, delimiter, groupBy string) string {
 	switch groupBy {
 	case "none":
 		return "Tables"

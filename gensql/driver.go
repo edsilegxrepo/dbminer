@@ -11,9 +11,9 @@ import (
 
 // Input validation patterns for SQL injection prevention
 var (
-	identifierRegex  = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)         // Standard SQL identifiers
-	mongoDBNameRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_\-]*$`)       // MongoDB allows hyphens
-	userRegex        = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_@.%'-]*$`)    // User names (email-like allowed)
+	identifierRegex  = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)      // Standard SQL identifiers
+	mongoDBNameRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_\-]*$`)    // MongoDB allows hyphens
+	userRegex        = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_@.%'-]*$`) // User names (email-like allowed)
 )
 
 // GenerateOptions configures SQL generation
