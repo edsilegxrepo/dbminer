@@ -413,7 +413,9 @@ func TestExportSchema_TSVSplit(t *testing.T) {
 		"indexes": [],
 		"views": []
 	}`
-	os.WriteFile(inputFile, []byte(content), 0o644)
+	if err := os.WriteFile(inputFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write input file: %v", err)
+	}
 
 	raw, _ := schema.LoadRaw(inputFile)
 	s := schema.ConvertRawToSchema(raw)
@@ -438,7 +440,9 @@ func TestExportSchema_InvalidFormat(t *testing.T) {
 
 	inputFile := filepath.Join(dir, "input.json")
 	content := `{"database_name": "testdb", "tables": [], "columns": [], "pk_info": [], "fk_info": [], "indexes": [], "views": []}`
-	os.WriteFile(inputFile, []byte(content), 0o644)
+	if err := os.WriteFile(inputFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write input file: %v", err)
+	}
 
 	raw, _ := schema.LoadRaw(inputFile)
 	s := schema.ConvertRawToSchema(raw)

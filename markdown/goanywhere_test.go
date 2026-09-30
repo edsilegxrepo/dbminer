@@ -75,7 +75,9 @@ func TestGoAnywhereMarkdown_TableDocs(t *testing.T) {
 	s := schema.ConvertRawToSchema(raw)
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	// Verify all table docs exist
 	tablesDir := filepath.Join(dir, "tables")
@@ -177,7 +179,9 @@ func TestGoAnywhereMarkdown_FKChainVisualization(t *testing.T) {
 	s := schema.ConvertRawToSchema(raw)
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	// Check that FK chain job_log -> job -> project -> web_user is navigable
 	tablesDir := filepath.Join(dir, "tables")
@@ -206,7 +210,9 @@ func TestGoAnywhereMarkdown_ColumnDetails(t *testing.T) {
 	s := schema.ConvertRawToSchema(raw)
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	tablesDir := filepath.Join(dir, "tables")
 	data, _ := os.ReadFile(filepath.Join(tablesDir, "dpa_web_user.md"))
@@ -239,7 +245,9 @@ func TestGoAnywhereMarkdown_IndexDetails(t *testing.T) {
 	s := schema.ConvertRawToSchema(raw)
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	// Check composite PK index in dpa_addr_book_con_group_map
 	data, _ := os.ReadFile(filepath.Join(dir, "tables", "dpa_addr_book_con_group_map.md"))
@@ -260,7 +268,9 @@ func TestGoAnywhereMarkdown_DomainGrouping(t *testing.T) {
 	s := schema.ConvertRawToSchema(raw)
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	data, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(data)

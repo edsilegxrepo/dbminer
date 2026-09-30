@@ -105,7 +105,9 @@ func TestExportJSON_Indentation(t *testing.T) {
 	dir := t.TempDir()
 	outFile := filepath.Join(dir, "schema.json")
 
-	Export(s, outFile, ExportOptions{Format: FormatJSON})
+	if err := Export(s, outFile, ExportOptions{Format: FormatJSON}); err != nil {
+		t.Fatal(err)
+	}
 
 	data, _ := os.ReadFile(outFile)
 	content := string(data)
@@ -154,7 +156,9 @@ func TestExportNDJSON_RecordTypes(t *testing.T) {
 	dir := t.TempDir()
 	outFile := filepath.Join(dir, "schema.ndjson")
 
-	Export(s, outFile, ExportOptions{Format: FormatNDJSON})
+	if err := Export(s, outFile, ExportOptions{Format: FormatNDJSON}); err != nil {
+		t.Fatal(err)
+	}
 
 	data, _ := os.ReadFile(outFile)
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
@@ -162,7 +166,9 @@ func TestExportNDJSON_RecordTypes(t *testing.T) {
 	typesSeen := make(map[string]int)
 	for _, line := range lines {
 		var obj map[string]interface{}
-		json.Unmarshal([]byte(line), &obj)
+		if err := json.Unmarshal([]byte(line), &obj); err != nil {
+			t.Fatal(err)
+		}
 		if t, ok := obj["_type"].(string); ok {
 			typesSeen[t]++
 		}
@@ -188,13 +194,17 @@ func TestExportNDJSON_MetadataContent(t *testing.T) {
 	dir := t.TempDir()
 	outFile := filepath.Join(dir, "schema.ndjson")
 
-	Export(s, outFile, ExportOptions{Format: FormatNDJSON})
+	if err := Export(s, outFile, ExportOptions{Format: FormatNDJSON}); err != nil {
+		t.Fatal(err)
+	}
 
 	data, _ := os.ReadFile(outFile)
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 
 	var meta map[string]interface{}
-	json.Unmarshal([]byte(lines[0]), &meta)
+	if err := json.Unmarshal([]byte(lines[0]), &meta); err != nil {
+		t.Fatal(err)
+	}
 
 	if meta["_type"] != "metadata" {
 		t.Error("first record should be metadata")
@@ -302,7 +312,9 @@ func TestExportTSV_SplitWithTriggers(t *testing.T) {
 	dir := t.TempDir()
 	outDir := filepath.Join(dir, "split")
 
-	Export(s, outDir, ExportOptions{Format: FormatTSV, TSVSplit: true})
+	if err := Export(s, outDir, ExportOptions{Format: FormatTSV, TSVSplit: true}); err != nil {
+		t.Fatal(err)
+	}
 
 	triggersPath := filepath.Join(outDir, "triggers.tsv")
 	if _, err := os.Stat(triggersPath); os.IsNotExist(err) {
@@ -321,7 +333,9 @@ func TestExportTSV_SplitWithProcedures(t *testing.T) {
 	dir := t.TempDir()
 	outDir := filepath.Join(dir, "split")
 
-	Export(s, outDir, ExportOptions{Format: FormatTSV, TSVSplit: true})
+	if err := Export(s, outDir, ExportOptions{Format: FormatTSV, TSVSplit: true}); err != nil {
+		t.Fatal(err)
+	}
 
 	procsPath := filepath.Join(outDir, "procedures.tsv")
 	if _, err := os.Stat(procsPath); os.IsNotExist(err) {
@@ -377,7 +391,9 @@ func TestExportTSV_SpecialCharacters(t *testing.T) {
 	dir := t.TempDir()
 	outFile := filepath.Join(dir, "schema.tsv")
 
-	Export(s, outFile, ExportOptions{Format: FormatTSV})
+	if err := Export(s, outFile, ExportOptions{Format: FormatTSV}); err != nil {
+		t.Fatal(err)
+	}
 
 	data, _ := os.ReadFile(outFile)
 	content := string(data)
@@ -396,7 +412,9 @@ func TestExportTSV_ForeignKeyInfo(t *testing.T) {
 	dir := t.TempDir()
 	outFile := filepath.Join(dir, "schema.tsv")
 
-	Export(s, outFile, ExportOptions{Format: FormatTSV})
+	if err := Export(s, outFile, ExportOptions{Format: FormatTSV}); err != nil {
+		t.Fatal(err)
+	}
 
 	data, _ := os.ReadFile(outFile)
 	content := string(data)
@@ -412,7 +430,9 @@ func TestExportTSV_PKIndicator(t *testing.T) {
 	dir := t.TempDir()
 	outFile := filepath.Join(dir, "schema.tsv")
 
-	Export(s, outFile, ExportOptions{Format: FormatTSV})
+	if err := Export(s, outFile, ExportOptions{Format: FormatTSV}); err != nil {
+		t.Fatal(err)
+	}
 
 	data, _ := os.ReadFile(outFile)
 	content := string(data)
@@ -461,7 +481,9 @@ func TestExportTSV_IndexInfo(t *testing.T) {
 	dir := t.TempDir()
 	outFile := filepath.Join(dir, "schema.tsv")
 
-	Export(s, outFile, ExportOptions{Format: FormatTSV})
+	if err := Export(s, outFile, ExportOptions{Format: FormatTSV}); err != nil {
+		t.Fatal(err)
+	}
 
 	data, _ := os.ReadFile(outFile)
 	content := string(data)
@@ -477,7 +499,9 @@ func TestExportTSV_TriggerInfo(t *testing.T) {
 	dir := t.TempDir()
 	outFile := filepath.Join(dir, "schema.tsv")
 
-	Export(s, outFile, ExportOptions{Format: FormatTSV})
+	if err := Export(s, outFile, ExportOptions{Format: FormatTSV}); err != nil {
+		t.Fatal(err)
+	}
 
 	data, _ := os.ReadFile(outFile)
 	content := string(data)
@@ -493,7 +517,9 @@ func TestExportTSV_StoredProcInfo(t *testing.T) {
 	dir := t.TempDir()
 	outFile := filepath.Join(dir, "schema.tsv")
 
-	Export(s, outFile, ExportOptions{Format: FormatTSV})
+	if err := Export(s, outFile, ExportOptions{Format: FormatTSV}); err != nil {
+		t.Fatal(err)
+	}
 
 	data, _ := os.ReadFile(outFile)
 	content := string(data)
@@ -538,7 +564,9 @@ func TestExportNDJSON_NoHTMLEscape(t *testing.T) {
 	dir := t.TempDir()
 	outFile := filepath.Join(dir, "schema.ndjson")
 
-	Export(s, outFile, ExportOptions{Format: FormatNDJSON})
+	if err := Export(s, outFile, ExportOptions{Format: FormatNDJSON}); err != nil {
+		t.Fatal(err)
+	}
 
 	data, _ := os.ReadFile(outFile)
 	content := string(data)

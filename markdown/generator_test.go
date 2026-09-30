@@ -110,7 +110,9 @@ func TestGenerate_README_Header(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -135,7 +137,9 @@ func TestGenerate_README_TableOfContents(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -157,7 +161,9 @@ func TestGenerate_README_MermaidERD(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -174,7 +180,9 @@ func TestGenerate_README_RelationshipsTable(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -192,7 +200,9 @@ func TestGenerate_README_TriggersSection(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -212,7 +222,9 @@ func TestGenerate_README_StoredProceduresSection(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -232,7 +244,9 @@ func TestGenerate_TableDoc_Header(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -256,7 +270,9 @@ func TestGenerate_TableDoc_ColumnsTable(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -290,7 +306,9 @@ func TestGenerate_TableDoc_Indexes(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -307,7 +325,9 @@ func TestGenerate_TableDoc_Triggers(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -324,7 +344,9 @@ func TestGenerate_TableDoc_OutboundRelationships(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "orders.md"))
 	doc := string(content)
@@ -347,7 +369,9 @@ func TestGenerate_TableDoc_InboundRelationships(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -364,7 +388,9 @@ func TestGenerate_TableDoc_MermaidERD(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	// orders has relationships, should have ERD
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "orders.md"))
@@ -382,7 +408,9 @@ func TestGenerate_TableDoc_BackLink(t *testing.T) {
 	s := newTestSchema()
 	dir := t.TempDir()
 
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -409,7 +437,9 @@ func TestGenerate_ViewDoc(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "active_users.md"))
 	doc := string(content)
@@ -429,7 +459,9 @@ func TestGenerate_README_ViewIcon(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)
@@ -574,7 +606,9 @@ func TestGenerate_GeneratedColumns(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "products.md"))
 	doc := string(content)
@@ -603,7 +637,9 @@ func TestGenerate_DefaultValues(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -632,7 +668,9 @@ func TestGenerate_NullableIndicator(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -665,7 +703,9 @@ func TestGenerate_MultipleIndexColumns(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "tables", "users.md"))
 	doc := string(content)
@@ -693,7 +733,9 @@ func TestGenerate_StoredProcParameters(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	Generate(s, dir, Options{})
+	if err := Generate(s, dir, Options{}); err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
 
 	content, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 	readme := string(content)

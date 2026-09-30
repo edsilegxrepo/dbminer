@@ -431,7 +431,9 @@ func TestGoAnywhereExport_NDJSON_Roundtrip(t *testing.T) {
 	dir := t.TempDir()
 	outFile := filepath.Join(dir, "export.ndjson")
 
-	Export(original, outFile, ExportOptions{Format: FormatNDJSON})
+	if err := Export(original, outFile, ExportOptions{Format: FormatNDJSON}); err != nil {
+		t.Fatalf("Export() error: %v", err)
+	}
 
 	// Parse NDJSON and rebuild counts
 	data, _ := os.ReadFile(outFile)
@@ -443,7 +445,9 @@ func TestGoAnywhereExport_NDJSON_Roundtrip(t *testing.T) {
 
 	for _, line := range lines {
 		var obj map[string]interface{}
-		json.Unmarshal([]byte(line), &obj)
+		if err := json.Unmarshal([]byte(line), &obj); err != nil {
+			t.Fatalf("failed to unmarshal JSON line: %v", err)
+		}
 
 		switch obj["_type"] {
 		case "table":
@@ -498,7 +502,9 @@ func TestGoAnywhereExport_FullSchema_NDJSON(t *testing.T) {
 	typeCounts := make(map[string]int)
 	for _, line := range lines {
 		var obj map[string]interface{}
-		json.Unmarshal([]byte(line), &obj)
+		if err := json.Unmarshal([]byte(line), &obj); err != nil {
+			t.Fatalf("failed to unmarshal JSON line: %v", err)
+		}
 		if t, ok := obj["_type"].(string); ok {
 			typeCounts[t]++
 		}

@@ -211,7 +211,7 @@ func exportTSVCombined(s *Schema, filename string) (rerr error) {
 	}
 
 	// Header
-	fmt.Fprintln(ew, "type\ttable_schema\ttable_name\tcolumn_name\tdata_type\tis_pk\tis_nullable\tdefault\tcomment\tfk_ref_table\tfk_ref_column")
+	fmt.Fprintln(ew, "type\ttable_schema\ttable_name\tcolumn_name\tdata_type\tis_pk\tis_nullable\tdefault\tcomment\tfk_ref_table\tfk_ref_column") //nolint:errcheck // errWriter captures error internally
 
 	// Tables
 	for _, t := range s.Tables {
@@ -219,7 +219,7 @@ func exportTSVCombined(s *Schema, filename string) (rerr error) {
 		if t.IsView {
 			kind = "VIEW"
 		}
-		fmt.Fprintf(ew, "%s\t%s\t%s\t\t\t\t\t\t%s\t\t\n",
+		fmt.Fprintf(ew, "%s\t%s\t%s\t\t\t\t\t\t%s\t\t\n", //nolint:errcheck // errWriter captures error internally
 			kind,
 			escapeTSV(t.Schema),
 			escapeTSV(t.Name),
@@ -251,7 +251,7 @@ func exportTSVCombined(s *Schema, filename string) (rerr error) {
 				}
 			}
 
-			fmt.Fprintf(ew, "COLUMN\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			fmt.Fprintf(ew, "COLUMN\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", //nolint:errcheck // errWriter captures error internally
 				escapeTSV(t.Schema),
 				escapeTSV(t.Name),
 				escapeTSV(field.Name),
@@ -276,7 +276,7 @@ func exportTSVCombined(s *Schema, filename string) (rerr error) {
 			if idx.Unique {
 				unique = "Y"
 			}
-			fmt.Fprintf(ew, "INDEX\t%s\t%s\t%s\t%s\t\t\t\t\t\t\n",
+			fmt.Fprintf(ew, "INDEX\t%s\t%s\t%s\t%s\t\t\t\t\t\t\n", //nolint:errcheck // errWriter captures error internally
 				escapeTSV(t.Schema),
 				escapeTSV(t.Name),
 				escapeTSV(idx.Name),
@@ -286,7 +286,7 @@ func exportTSVCombined(s *Schema, filename string) (rerr error) {
 
 	// Triggers
 	for _, trig := range s.Triggers {
-		fmt.Fprintf(ew, "TRIGGER\t%s\t%s\t%s\t%s/%s\t\t\t\t\t\t\n",
+		fmt.Fprintf(ew, "TRIGGER\t%s\t%s\t%s\t%s/%s\t\t\t\t\t\t\n", //nolint:errcheck // errWriter captures error internally
 			escapeTSV(trig.Schema),
 			escapeTSV(trig.Table),
 			escapeTSV(trig.Name),
@@ -300,7 +300,7 @@ func exportTSVCombined(s *Schema, filename string) (rerr error) {
 		for _, p := range sp.Parameters {
 			paramStrs = append(paramStrs, p.Mode+" "+p.Name+" "+p.Type)
 		}
-		fmt.Fprintf(ew, "%s\t%s\t\t%s\t%s\t\t\t\t%s\t\t\n",
+		fmt.Fprintf(ew, "%s\t%s\t\t%s\t%s\t\t\t\t%s\t\t\n", //nolint:errcheck // errWriter captures error internally
 			escapeTSV(sp.Type),
 			escapeTSV(sp.Schema),
 			escapeTSV(sp.Name),
@@ -330,13 +330,13 @@ func exportTSVSplit(s *Schema, dir string) error {
 
 	// tables.tsv
 	if err := writeTSVFile(filepath.Join(dir, "tables.tsv"), func(w *errWriter) {
-		fmt.Fprintln(w, "id\tschema\tname\ttype\tcomment")
+		fmt.Fprintln(w, "id\tschema\tname\ttype\tcomment") //nolint:errcheck // errWriter captures error internally
 		for _, t := range s.Tables {
 			kind := "TABLE"
 			if t.IsView {
 				kind = "VIEW"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", //nolint:errcheck // errWriter captures error internally
 				t.ID, escapeTSV(t.Schema), escapeTSV(t.Name), kind, escapeTSV(t.Comment))
 		}
 	}); err != nil {
@@ -345,7 +345,7 @@ func exportTSVSplit(s *Schema, dir string) error {
 
 	// columns.tsv
 	if err := writeTSVFile(filepath.Join(dir, "columns.tsv"), func(w *errWriter) {
-		fmt.Fprintln(w, "id\ttable_id\ttable_name\tname\ttype\tis_pk\tis_unique\tis_nullable\tdefault\tgenerated_expr\tgenerated_type\tcomment")
+		fmt.Fprintln(w, "id\ttable_id\ttable_name\tname\ttype\tis_pk\tis_unique\tis_nullable\tdefault\tgenerated_expr\tgenerated_type\tcomment") //nolint:errcheck // errWriter captures error internally
 		for _, t := range s.Tables {
 			for _, field := range t.Fields {
 				pk, unique, nullable := "", "", ""
@@ -358,7 +358,7 @@ func exportTSVSplit(s *Schema, dir string) error {
 				if field.Nullable {
 					nullable = "Y"
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", //nolint:errcheck // errWriter captures error internally
 					field.ID, t.ID, escapeTSV(t.Name), escapeTSV(field.Name),
 					escapeTSV(field.Type.Name), pk, unique, nullable,
 					escapeTSV(field.Default), escapeTSV(field.GeneratedExpr),
@@ -371,7 +371,7 @@ func exportTSVSplit(s *Schema, dir string) error {
 
 	// indexes.tsv
 	if err := writeTSVFile(filepath.Join(dir, "indexes.tsv"), func(w *errWriter) {
-		fmt.Fprintln(w, "id\ttable_id\ttable_name\tname\tis_unique\tcolumns")
+		fmt.Fprintln(w, "id\ttable_id\ttable_name\tname\tis_unique\tcolumns") //nolint:errcheck // errWriter captures error internally
 		for _, t := range s.Tables {
 			for _, idx := range t.Indexes {
 				var colNames []string
@@ -384,7 +384,7 @@ func exportTSVSplit(s *Schema, dir string) error {
 				if idx.Unique {
 					unique = "Y"
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", //nolint:errcheck // errWriter captures error internally
 					idx.ID, t.ID, escapeTSV(t.Name), escapeTSV(idx.Name),
 					unique, strings.Join(colNames, ","))
 			}
@@ -395,7 +395,7 @@ func exportTSVSplit(s *Schema, dir string) error {
 
 	// relationships.tsv
 	if err := writeTSVFile(filepath.Join(dir, "relationships.tsv"), func(w *errWriter) {
-		fmt.Fprintln(w, "id\tname\tsrc_table\tsrc_column\ttgt_table\ttgt_column\tcardinality")
+		fmt.Fprintln(w, "id\tname\tsrc_table\tsrc_column\ttgt_table\ttgt_column\tcardinality") //nolint:errcheck // errWriter captures error internally
 		for _, rel := range s.Relationships {
 			srcTable, tgtTable := "", ""
 			srcCol, tgtCol := "", ""
@@ -411,7 +411,7 @@ func exportTSVSplit(s *Schema, dir string) error {
 			if fld := fieldMap[rel.TargetFieldID]; fld != nil {
 				tgtCol = fld.Name
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s:%s\n",
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s:%s\n", //nolint:errcheck // errWriter captures error internally
 				rel.ID, escapeTSV(rel.Name),
 				escapeTSV(srcTable), escapeTSV(srcCol),
 				escapeTSV(tgtTable), escapeTSV(tgtCol),
@@ -424,9 +424,9 @@ func exportTSVSplit(s *Schema, dir string) error {
 	// triggers.tsv
 	if len(s.Triggers) > 0 {
 		if err := writeTSVFile(filepath.Join(dir, "triggers.tsv"), func(w *errWriter) {
-			fmt.Fprintln(w, "id\tschema\ttable\tname\ttiming\tevent")
+			fmt.Fprintln(w, "id\tschema\ttable\tname\ttiming\tevent") //nolint:errcheck // errWriter captures error internally
 			for _, trig := range s.Triggers {
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", //nolint:errcheck // errWriter captures error internally
 					trig.ID, escapeTSV(trig.Schema), escapeTSV(trig.Table),
 					escapeTSV(trig.Name), escapeTSV(trig.Timing), escapeTSV(trig.Event))
 			}
@@ -438,13 +438,13 @@ func exportTSVSplit(s *Schema, dir string) error {
 	// procedures.tsv
 	if len(s.StoredProcedures) > 0 {
 		if err := writeTSVFile(filepath.Join(dir, "procedures.tsv"), func(w *errWriter) {
-			fmt.Fprintln(w, "id\tschema\tname\ttype\treturn_type\tparameters\tcomment")
+			fmt.Fprintln(w, "id\tschema\tname\ttype\treturn_type\tparameters\tcomment") //nolint:errcheck // errWriter captures error internally
 			for _, sp := range s.StoredProcedures {
 				var paramStrs []string
 				for _, p := range sp.Parameters {
 					paramStrs = append(paramStrs, p.Mode+" "+p.Name+" "+p.Type)
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", //nolint:errcheck // errWriter captures error internally
 					sp.ID, escapeTSV(sp.Schema), escapeTSV(sp.Name),
 					escapeTSV(sp.Type), escapeTSV(sp.ReturnType),
 					escapeTSV(strings.Join(paramStrs, "; ")), escapeTSV(sp.Comment))

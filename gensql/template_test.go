@@ -137,6 +137,7 @@ func TestExecuteTemplate_DirectMode(t *testing.T) {
 	if strings.Contains(result, "CREATE PROCEDURE") && !strings.Contains(result, "{{") {
 		// Note: Some templates might still have CREATE for other things
 		// Just verify it's not wrapping the main query in a procedure
+		t.Error("direct mode should not create stored procedure")
 	}
 }
 
