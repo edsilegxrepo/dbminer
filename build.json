@@ -1,0 +1,18 @@
+{
+  "name": "dbminer",
+  "version": "0.9.2",
+  "release": "1",
+  "channel": "xg",
+  "entrypoint": ".",
+  "version_pkg": "main.version",
+  "build_pkg": "",
+  "summary": "Multi-database schema documentation and metadata extractor",
+  "description": "Generates structural database schema documentation, table DDL, indexes, and column metadata.",
+  "maintainer": "Mis Center <support@criticalsys.net>",
+  "license": "MIT",
+  "url": "https://criticalsys.net",
+  "section": "utils",
+  "priority": "optional",
+  "install_path": "/usr/bin",
+  "cgo": false
+}
