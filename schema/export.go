@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-const FileMode = 0o644
+const FileMode = 0o640
 
 // errWriter wraps a writer and captures the first error.
 // This allows multiple fmt.Fprint* calls without checking each return value,
@@ -69,7 +69,7 @@ func exportJSON(s *Schema, filename string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filename, data, FileMode)
+	return os.WriteFile(filename, data, FileMode) // #nosec G306 -- 0640 is intended for user-created export files
 }
 
 // exportNDJSON writes newline-delimited JSON (one record per line)

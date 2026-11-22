@@ -15,7 +15,7 @@ import (
 	"criticalsys.net/dbminer/schema"
 )
 
-const FileMode = 0o644
+const FileMode = 0o640
 
 var (
 	mermaidIDRegex    = regexp.MustCompile(`[^a-zA-Z0-9_]`)
@@ -417,7 +417,7 @@ func generateReadme(s *schema.Schema, outputDir string, tableMap map[string]*sch
 		}
 	}
 
-	return os.WriteFile(filepath.Join(outputDir, "README.md"), []byte(sb.String()), FileMode)
+	return os.WriteFile(filepath.Join(outputDir, "README.md"), []byte(sb.String()), FileMode) // #nosec G306 -- 0640 is intended for user-created markdown files
 }
 
 func generateTableDoc(table *schema.Table, s *schema.Schema, outputDir string, tableMap map[string]*schema.Table, fieldMap map[string]*schema.Field) error {
@@ -590,5 +590,5 @@ func generateTableDoc(table *schema.Table, s *schema.Schema, outputDir string, t
 	sb.WriteString("\n---\n")
 	sb.WriteString("\n[← Back to Schema](../README.md)\n")
 
-	return os.WriteFile(filepath.Join(outputDir, sanitizeFilename(table.Name)+".md"), []byte(sb.String()), FileMode)
+	return os.WriteFile(filepath.Join(outputDir, sanitizeFilename(table.Name)+".md"), []byte(sb.String()), FileMode) // #nosec G306 -- 0640 is intended for user-created markdown files
 }
